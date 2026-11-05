@@ -4,7 +4,7 @@
 
 手机不需要安装 App，也不需要网页相机权限。电脑安装 Chrome/Edge 扩展；手机打开网页输入四位连接码，或用系统相机扫码跳过输入；两种方式都需要电脑确认授权。
 
-当前版本 **0.1.2**。先本地跑通，再将同一服务部署到云端；公开源码不代表已经部署服务。
+当前版本 **0.1.3**。默认服务地址：[https://motro.rafa.love](https://motro.rafa.love)。手机和电脑均能联网即可，不必处于同一局域网。
 
 ## 项目结构
 
@@ -22,18 +22,14 @@ deploy/         systemd 模板
 
 三个逻辑模块，**只启动一个服务进程**。手机网页由服务端托管；云端也只运行这一进程，插件留在电脑上。
 
-## 五分钟启动
+## 快速使用
 
-环境：Node.js 22+、npm、Chrome 116+ 或近期版本的 Edge。
+环境：Chrome 116+ 或近期版本的 Edge。普通使用无需在电脑安装 Node.js 或启动本地服务。
 
 ```sh
 git clone https://github.com/Raphael-0624/motro.git
 cd motro
-npm ci
-npm run dev
 ```
-
-终端显示本机及局域网访问地址，默认端口为 `3030`。
 
 ### 1. 加载插件
 
@@ -43,15 +39,29 @@ npm run dev
 
 ### 2. 配对手机
 
-1. 打开插件，点击「启动」。固定默认服务为 `http://localhost:3030`，无需输入地址。
-2. 手机与电脑连接同一 Wi-Fi，用系统相机扫描插件二维码，直接进入「在电脑上确认授权」。
-3. 也可以点击插件网址复制，发送到手机打开，再输入四位连接码。
-4. 打开电脑插件，点击「确认授权」。拒绝则不会开放控制。
-5. 电脑切换到普通网页；手机在大触控板上滑动或双指捏合。
+1. 打开插件，点击「启动」。固定默认服务为 `https://motro.rafa.love`，无需输入地址。
+2. 手机用系统相机扫描插件二维码，直接进入「在电脑上确认授权」。
+3. 打开电脑插件，点击「确认授权」。拒绝则不会开放控制。
+4. 电脑切换到普通网页；手机在大触控板上滑动或双指捏合。
 
 二维码携带短期连接码，**跳过输入，不跳过授权**。刷新码后旧二维码失效。网页本身不调用相机。
 
-手机不能使用 `localhost` 访问电脑；请使用插件显示的局域网地址。多个网卡存在时，确认地址对应手机可达的 Wi-Fi 网络，VPN 地址不一定可用。
+插件仅展示二维码作为手机入口，不展示网址或复制按钮；保留居中连接码、刷新和结束按钮。
+
+手机也可以直接打开 `https://motro.rafa.love` 并输入连接码。云端不可用时插件会重试，不会悄悄切回本地服务。
+
+## 本地开发
+
+需要 Node.js 22+ 和 npm：
+
+```sh
+npm ci
+npm run dev
+```
+
+服务默认端口为 `3030`，终端显示本机及局域网访问地址。插件在 service worker 控制台执行 `chrome.storage.local.set({ serverUrlOverride: 'http://localhost:3030' })`，再点击「启动」切到本地。恢复云端执行 `chrome.storage.local.remove('serverUrlOverride')` 后结束并重新启动连接。
+
+本地模式下手机与电脑需处于可互通的局域网，可扫描插件二维码，或使用服务终端打印的局域网地址，不使用 `localhost`（手机的 localhost 指向手机自己）。多个网卡存在时注意 VPN 地址不一定可达。
 
 ## 操作与状态
 
@@ -84,7 +94,7 @@ npm run smoke -- https://实际域名 # 无需提供扩展 ID
 
 `.env.example` 是环境变量说明，不自动加载。可使用 shell 环境变量，或 `node --env-file=.env apps/server/src/index.js`。
 
-固定插件地址配置在 `apps/extension/background.js` 的 `DEFAULT_SERVER`。目前保留本地默认；拿到部署地址后统一改为 HTTPS 地址、递增版本、重新加载插件，不在弹窗增加设置表单。调试用的 `chrome.storage.local.serverUrl` 覆盖值需要清除才能使用新默认。
+固定插件地址配置在 `apps/extension/background.js` 的 `DEFAULT_SERVER`，当前为 `https://motro.rafa.love`。弹窗不增加设置表单；只有显式的 `serverUrlOverride` 用于本地调试。旧版本保存的 `serverUrl` 自动移除，不再覆盖新默认。切换服务会清除旧会话，需要重新配对；同一服务的后台恢复仍保留会话。
 
 云端只需 Node 服务、HTTPS/WSS 反向代理和持久化数据目录，参见 [给服务器 Agent 的部署任务](docs/deploy-agent.md)。插件更新需要电脑端更新本地源码并在扩展管理页重新加载；自托管服务器不能自动替用户更新解压安装的扩展。
 

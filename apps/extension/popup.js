@@ -3,7 +3,6 @@ import qrcode from './vendor/qrcode.mjs';
 const $ = (id) => document.getElementById(id);
 $('app-version').textContent = `v${chrome.runtime.getManifest().version}`;
 let state;
-let phoneUrl = '';
 let qrUrl = '';
 
 async function request(message) {
@@ -53,16 +52,15 @@ function render(next) {
   $('code').textContent = state.code || '----';
   $('error').hidden = !state.error;
   $('error').textContent = state.error;
-  phoneUrl = '';
+  let phoneUrl = '';
   for (const candidate of state.mobileUrls) {
     try {
       const parsed = new URL(candidate);
       if (['http:', 'https:'].includes(parsed.protocol)) { phoneUrl = parsed.origin; break; }
     } catch { /* ignore malformed server metadata */ }
   }
-  $('phone-address').hidden = !phoneUrl;
+  $('qr-entry').hidden = !phoneUrl;
   if (phoneUrl) {
-    $('phone-url').textContent = phoneUrl;
     const pairingUrl = new URL(phoneUrl);
     pairingUrl.hash = new URLSearchParams({ code: state.code }).toString();
     drawQr(pairingUrl.href);
@@ -74,13 +72,5 @@ $('stop').addEventListener('click', () => request({ type: 'stop' }));
 $('refresh').addEventListener('click', () => request({ type: 'refresh' }));
 $('allow').addEventListener('click', () => request({ type: 'approve', id: state.pending?.id, allow: true }));
 $('deny').addEventListener('click', () => request({ type: 'approve', id: state.pending?.id, allow: false }));
-$('copy-url').addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(phoneUrl);
-    $('copy-label').textContent = '已复制';
-  } catch {
-    $('copy-label').textContent = '复制失败';
-  }
-});
 chrome.runtime.onMessage.addListener((message) => { if (message.type === 'state') render(message.state); });
 request({ type: 'getState' });

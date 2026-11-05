@@ -49,7 +49,7 @@ Node.js 服务 (apps/server)
 
 ## 扩展权限
 
-- `storage`：本地保存服务地址；session storage 保存后台重启需要的临时状态和令牌。
+- `storage`：本地仅保存显式调试地址 `serverUrlOverride`，不再持久化默认地址；session storage 保存同服务后台重启需要的临时状态和令牌。切换服务清除旧令牌，避免跨来源复用。
 - `scripting`：为扩展加载之前已经打开的网页补注入滚动脚本。
 - `alarms`：后台恢复检查。
 - `<all_urls>`：支持用户主动切换的任意普通网页。只有 `activeTab` 权限不能持续控制后续切换的标签页。

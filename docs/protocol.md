@@ -4,9 +4,9 @@
 
 ## HTTP 与扫码入口
 
-- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.2" }`。
-- `GET /api/version`：`{ "version": "0.1.2", "server": "0.1.2", "mobile": "0.1.2", "extension": "0.1.2" }`。
-- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.2" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
+- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.3" }`。
+- `GET /api/version`：`{ "version": "0.1.3", "server": "0.1.3", "mobile": "0.1.3", "extension": "0.1.3" }`。
+- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.3" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
 - `GET /` 和白名单静态资源：手机网页，不增加访问序号；页面随后显式调用 visits。
 
 二维码地址形如 `http://局域网IP:3030/#code=5829`。fragment 不发送给 HTTP 服务；网页读取有效四位码后移除 fragment 并自动提交 `mobile.join`，仍走下方授权流程。连接码不是令牌；过期或已使用时回到输入页。

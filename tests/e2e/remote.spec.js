@@ -40,7 +40,7 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
       await cdp.detach();
     }
     const worker = desktop.serviceWorkers()[0] || await desktop.waitForEvent('serviceworker');
-    await worker.evaluate((url) => chrome.storage.local.set({ serverUrl: url }), serverUrl);
+    await worker.evaluate((url) => chrome.storage.local.set({ serverUrlOverride: url }), serverUrl);
     const extensionId = new URL(worker.url()).hostname;
     const popup = await desktop.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -63,12 +63,8 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     const scanUrl = new URL(await popup.locator('#qr').getAttribute('data-url'));
     expect(new URLSearchParams(scanUrl.hash.slice(1)).get('code')).toBe(code);
     expect(await popup.locator('#qr').evaluate((canvas) => canvas.width)).toBeGreaterThan(100);
-    await popup.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: async (text) => { globalThis.__copiedUrl = text; } },
-    }));
-    await popup.locator('#copy-url').click();
-    expect(await popup.evaluate(() => globalThis.__copiedUrl)).toBe(await popup.locator('#phone-url').textContent());
-    await expect(popup.locator('#copy-label')).toHaveText('已复制');
+    await expect(popup.locator('#copy-url, #phone-url')).toHaveCount(0);
+    await expect(popup.locator('#pair-view')).not.toContainText('http');
     await popup.screenshot({ path: 'test-results/extension-code.png' });
 
     // The controlled page is a real HTTP tab, not a privileged browser page.

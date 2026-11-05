@@ -1,6 +1,6 @@
 # Motro Development Notes
 
-- This is a local-first prototype with three modules: `apps/server`, `apps/mobile`, `apps/extension`.
+- Motro has three modules: `apps/server`, `apps/mobile`, `apps/extension`. The extension defaults to `https://motro.rafa.love`; local development uses an explicit `serverUrlOverride`.
 - Use Node.js 22+ and npm. Keep `package-lock.json` committed with dependency changes.
 - Every delivered update must increment the unified version with `npm run version:bump`. Keep root/workspace packages, extension manifest and lockfile aligned; `npm run check` enforces this. Bump once per release, not once per edited file.
 - Persist visit numbers in `DATA_DIR`; do not delete, reset or commit runtime counters when updating or deploying.
@@ -11,6 +11,6 @@
 - Treat pairing codes as short-lived discovery identifiers, never as long-term authentication. Never forward control before computer approval.
 - Current deployment accepts different computers without an extension-ID whitelist. Do not require users to provide extension IDs or enable `EXTENSION_IDS` by default; retain computer approval and browser Origin checks.
 - Do not log pairing tokens, expose tokens to content scripts, or commit `.env` or browser profiles.
-- Cloud deployment is a later phase. Do not deploy, publish, or expose ports publicly without an explicit request.
+- Cloud deployment and server updates are handled separately by the server agent. Do not deploy, publish, or expose ports publicly without an explicit request.
 - Keep user-facing copy and development docs in Chinese; identifiers and code comments in English.
 - Preserve the warm paper / green accent visual direction. Do not introduce remote fonts or CDN scripts; local operation must work without internet.

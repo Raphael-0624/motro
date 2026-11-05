@@ -22,9 +22,6 @@ p { margin: 0; font-size: 13px; line-height: 1.6; }
 .text-button { border: 0; padding: 8px 4px; font-size: 12px; color: #6c7166; }
 #qr { display: block; width: 156px; height: 156px; border-radius: 8px; }
 .hint { font-size: 11px; color: #6c7166; }
-.address-button { display: flex; width: 100%; gap: 12px; justify-content: space-between; align-items: center; font-size: 11px; border-color: #d1d4c5; }
-#phone-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#copy-label { flex-shrink: 0; color: #6c7166; }
 .actions { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
 .actions button { flex: 1; }
 .stop { margin-top: 20px; }

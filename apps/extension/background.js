@@ -1,4 +1,4 @@
-const DEFAULT_SERVER = 'http://localhost:3030';
+const DEFAULT_SERVER = 'https://motro.rafa.love';
 let state = {
   enabled: false, serverUrl: DEFAULT_SERVER, token: null, code: '', expiresAt: 0,
   mobileUrls: [], connected: false, paired: false, mobileConnected: false, pending: null, error: '',
@@ -12,6 +12,14 @@ let controlTimer;
 let processing = false;
 let pendingControl = { dx: 0, dy: 0, factor: 1, reset: false };
 let lastFeedback = 0;
+
+function serverAddress(override) {
+  const url = new URL(override || DEFAULT_SERVER);
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('服务地址配置无效。');
+  }
+  return url.origin;
+}
 
 function publicState() {
   const { token, ...visible } = state;
@@ -142,16 +150,24 @@ function stop() {
   clearTimeout(controlTimer); controlTimer = null;
   pendingControl = { dx: 0, dy: 0, factor: 1, reset: false };
   socket?.close(); socket = null;
-  Object.assign(state, { token: null, code: '', connected: false, paired: false, mobileConnected: false, pending: null, error: '' });
+  Object.assign(state, { token: null, code: '', expiresAt: 0, mobileUrls: [], connected: false, paired: false, mobileConnected: false, pending: null, error: '' });
 }
 
 const ready = (async () => {
   const [session, config] = await Promise.all([
-    chrome.storage.session.get('motro'), chrome.storage.local.get('serverUrl'),
+    chrome.storage.session.get('motro'), chrome.storage.local.get('serverUrlOverride'),
   ]);
   if (session.motro) Object.assign(state, session.motro);
-  if (config.serverUrl) state.serverUrl = config.serverUrl;
+  const serverUrl = serverAddress(config.serverUrlOverride);
+  if (state.serverUrl !== serverUrl) {
+    // Tokens belong to one server only; never send an old session to a new origin.
+    stop();
+    state.serverUrl = serverUrl;
+  }
+  // Older releases persisted the default as a setting. Only explicit debug overrides survive.
+  await chrome.storage.local.remove('serverUrl');
   state.connected = false; state.mobileConnected = false;
+  await publish();
   await chrome.alarms.create('motro-reconnect', { periodInMinutes: 1 });
   if (state.enabled) connect();
 })();
@@ -167,14 +183,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   (async () => {
     await ready;
     if (message.type === 'start') {
-      const config = await chrome.storage.local.get('serverUrl');
-      const url = new URL(config.serverUrl || DEFAULT_SERVER);
-      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-        throw new Error('服务地址配置无效。');
-      }
+      const config = await chrome.storage.local.get('serverUrlOverride');
+      const serverUrl = serverAddress(config.serverUrlOverride);
       stop();
-      state.serverUrl = url.origin; state.enabled = true;
-      await chrome.storage.local.set({ serverUrl: state.serverUrl });
+      state.serverUrl = serverUrl; state.enabled = true;
       await publish();
       connect();
     } else if (message.type === 'stop') { stop(); await publish(); }

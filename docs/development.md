@@ -16,7 +16,7 @@ macOS 如弹出网络访问或防火墙提示，需允许 Node.js 接受局域�
 
 ```sh
 curl http://localhost:3030/api/health
-# {"ok":true,"name":"motro","version":"0.1.2"}
+# {"ok":true,"name":"motro","version":"0.1.3"}
 curl http://localhost:3030/api/version
 ```
 
@@ -30,7 +30,7 @@ curl http://localhost:3030/api/version
 
 插件调试：`chrome://extensions` → Motro → service worker 检查视图。手机端可用电脑浏览器打开同一网页调试表单；真正的双指手感需要手机验证。
 
-插件固定默认地址位于 `apps/extension/background.js` 的 `DEFAULT_SERVER`，弹窗不提供地址输入。仅调试时可在后台控制台用 `chrome.storage.local.set({ serverUrl: 'http://localhost:4040' })` 临时覆盖；恢复默认执行 `chrome.storage.local.remove('serverUrl')`，结束后重新启动连接。
+插件默认连接 `https://motro.rafa.love`，配置位于 `apps/extension/background.js` 的 `DEFAULT_SERVER`，弹窗不提供地址输入。仅本地调试时在后台控制台执行 `chrome.storage.local.set({ serverUrlOverride: 'http://localhost:3030' })`，再点击「启动」。恢复云端执行 `chrome.storage.local.remove('serverUrlOverride')`，结束后重新启动连接。旧键 `serverUrl` 自动清理；切换服务不复用令牌，同一服务的后台恢复保留原会话。
 
 每次交付先执行一次 `npm run version:bump`，统一更新根包、三个 workspace、扩展 manifest 与 lockfile。`npm run check` 验证版本一致。不要逐文件、逐次修改都重复递增。
 
@@ -46,7 +46,7 @@ npm run test:e2e
 
 服务端集成测试启动随机本机端口，不依赖开发服务。浏览器测试独占 `127.0.0.1:4031`，使用临时浏览器配置文件并自动删除，不碰日常 Chrome 个人数据。
 
-浏览器端到端测试加载真实扩展，模拟移动设备指针与双指触摸，验证：居中连接码、复制地址、二维码携码、手动输入 / 扫码自动申请、电脑拒绝 / 确认、关闭弹窗并闲置 35 秒后持续控制、页面滚动与轻量惯性、触摸停止惯性、原生缩放、重置、刷新重连、访问序号和主动断开。截图写入忽略提交的 `test-results/`。
+浏览器端到端测试加载真实扩展，模拟移动设备指针与双指触摸，验证：居中连接码、弹窗不展示网址 / 复制按钮、二维码携码、手动输入 / 扫码自动申请、电脑拒绝 / 确认、关闭弹窗并闲置 35 秒后持续控制、页面滚动与轻量惯性、触摸停止惯性、原生缩放、重置、刷新重连、访问序号和主动断开。截图写入忽略提交的 `test-results/`。
 
 如果测试浏览器下载较慢，也可以显式使用本机近期版本的 Chrome，通过实验性 CDP 扩展加载接口运行，不使用日常浏览器个人数据：
 
@@ -72,6 +72,12 @@ MOTRO_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 - 新增不传扩展 ID 的部署 smoke 测试；`npm run verify` 共 23 项测试。
 - 真实扩展端到端测试继续覆盖扫码、授权、闲置连接、惯性及缩放。
 
+### 0.1.3 回归范围（2026-11-05）
+
+- 默认云端地址、旧本地地址迁移、显式调试覆盖和同服务后台恢复，`npm run verify` 共 27 项测试。
+- 弹窗只提供二维码入口、不展示网址或复制按钮，保留居中连接码；本地真实扩展完整链路测试。
+- 使用真实 Chrome 扩展对接云端 0.1.2，验证 HTTPS/WSS、云端二维码、扫码自动申请、电脑授权、滚动及原生缩放。新版本上线后仍需服务器 Agent 执行版本及 smoke 检查。
+
 ## 手工验收清单
 
 - [ ] Chrome 加载插件后无错误；Edge 单独验证一次。
@@ -95,9 +101,9 @@ MOTRO_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 常见故障
 
-**手机打不开网址**：不要输入 `localhost`；检查是否同一 Wi-Fi、访客网络是否启用了设备隔离、是否误选 VPN 网卡、macOS 防火墙是否阻挡 Node.js。
+**手机打不开网址**：云端先检查 `https://motro.rafa.love` 是否能访问，确认网络、DNS 和证书。本地模式不要输入 `localhost`；检查是否同一 Wi-Fi、访客网络设备隔离、VPN 网卡和 macOS 防火墙。
 
-**插件连接失败**：确认服务正在运行；电脑可先打开健康检查地址。固定默认服务为 `http://localhost:3030`，部署后统一修改代码中的默认地址为 HTTPS 域名，不支持 URL 子路径；注意清除调试覆盖值。
+**插件连接失败**：默认云端可检查 `https://motro.rafa.love/api/health`。本地调试确认服务启动且设置了 `serverUrlOverride`，恢复云端要移除此覆盖值；不支持 URL 子路径。服务不可用时持续重试，不自动回退本地。
 
 **连接了但网页不动**：先切换到普通网站，不要停留在扩展管理页；扩展刚安装时可刷新目标网站；列表页面将电脑鼠标移到需要滚动的区域再试。PDF/iframe 不在首版保证范围。
 

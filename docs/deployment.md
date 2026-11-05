@@ -1,6 +1,6 @@
 # 远程部署准备
 
-当前优先本地验收，本文不表示已经部署或达到公开运营标准。
+默认公网地址为 `https://motro.rafa.love`；本地已验证 HTTPS/WSS 配对转发，后续更新仍需由服务器 Agent 部署并验收。这不代表已经具备大规模公开运营能力。
 
 ## 哪些内容上云
 
@@ -8,7 +8,7 @@
 - `apps/mobile`：保持仓库相对目录，由 server 托管。
 - 根目录的 `package.json`、`package-lock.json` 和 workspace 清单，以便安装依赖。最简单是上传整个仓库（不含 `node_modules` 和个人配置）。
 
-`apps/extension` 不在服务器执行；用户在电脑浏览器安装它。部署成功返回 HTTPS 地址后，在本机统一修改 `apps/extension/background.js` 的 `DEFAULT_SERVER`、递增版本并重新加载插件。弹窗不提供地址输入；如有调试用 `chrome.storage.local.serverUrl` 覆盖值需要清除。不需要修改手机端 WebSocket 地址，它会自动使用当前页面域名和 `wss:`。
+`apps/extension` 不在服务器执行；用户在电脑浏览器安装它，默认连接 `https://motro.rafa.love`。改域名时由本机统一修改 `apps/extension/background.js` 的 `DEFAULT_SERVER`、递增版本并重新加载插件。弹窗不提供地址输入；旧 `serverUrl` 自动移除，仅显式 `serverUrlOverride` 用于本地调试。不需要修改手机端 WebSocket 地址，它会自动使用当前页面域名和 `wss:`。
 
 可以将 [部署任务](deploy-agent.md) 交给云服务器上的 Agent。仓库提供 `deploy/motro.service` 模板，使用前核实系统 Node 路径和现有站点。
 
@@ -16,7 +16,7 @@
 
 ```sh
 npm ci --omit=dev
-HOST=127.0.0.1 PORT=3030 PUBLIC_URL=https://motro.example.com \
+HOST=127.0.0.1 PORT=3030 PUBLIC_URL=https://motro.rafa.love \
 DATA_DIR=/var/lib/motro npm start
 ```
 

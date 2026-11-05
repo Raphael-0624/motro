@@ -15,10 +15,9 @@
       <section id="connecting-view" class="center" hidden><span class="spinner" aria-hidden="true"></span><p role="status">连接服务中…</p></section>
       <section id="pair-view" hidden>
         <div class="code-row"><span id="code" aria-label="连接码">----</span><button id="refresh" class="text-button" type="button">刷新</button></div>
-        <div id="phone-address" class="center">
+        <div id="qr-entry" class="center">
           <canvas id="qr" role="img" aria-label="扫描二维码打开手机触控板"></canvas>
           <p class="hint">扫描二维码</p>
-          <button id="copy-url" class="address-button" type="button" title="点击复制手机地址"><span id="phone-url"></span><span id="copy-label">复制</span></button>
         </div>
       </section>
       <section id="approval" class="center" hidden><p role="status">手机请求连接</p><div class="actions"><button id="allow" class="primary" type="button">确认授权</button><button id="deny" type="button">拒绝</button></div></section>
