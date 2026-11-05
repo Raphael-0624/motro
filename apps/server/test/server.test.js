@@ -4,6 +4,9 @@ import { once } from 'node:events';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { WebSocket } from 'ws';
 import { createMotroServer } from '../src/server.js';
 import { versions } from '../src/version.js';
@@ -226,4 +229,41 @@ test('can restrict browser extension origins to an explicit allowlist', async (t
   const rejected = new WebSocket(f.base.replace('http:', 'ws:') + '/ws', { origin: `chrome-extension://${'b'.repeat(32)}` });
   const [error] = await once(rejected, 'error');
   assert.match(error.message, /403/);
+});
+
+for (const extensionIds of [undefined, []]) {
+  test(`accepts different extension IDs without a whitelist (${extensionIds ? 'empty' : 'unset'})`, async (t) => {
+    const f = await fixture(t, { extensionIds });
+    const computers = [];
+    for (const letter of ['a', 'b']) {
+      const host = await f.client({ origin: `chrome-extension://${letter.repeat(32)}` });
+      host.send({ type: 'host.open' });
+      const initial = await host.next('host.state');
+      const phone = await f.client({ origin: f.base });
+      phone.send({ type: 'mobile.join', code: initial.code });
+      await phone.next('mobile.pending');
+      phone.send({ type: 'control', action: 'resetZoom' });
+      assert.equal((await phone.next('error')).code, 'FORBIDDEN');
+      const pending = await host.next('host.state');
+      host.send({ type: 'host.approve', id: pending.pending.id, allow: true });
+      await phone.next('mobile.ready');
+      await host.next('host.state');
+      computers.push({ host, phone, initial });
+    }
+    assert.notEqual(computers[0].initial.code, computers[1].initial.code);
+    assert.notEqual(computers[0].initial.token, computers[1].initial.token);
+    for (const [index, { host, phone }] of computers.entries()) {
+      phone.send({ type: 'control', action: 'scroll', dx: 0, dy: 40 + index });
+      assert.equal((await host.next('control')).dy, 40 + index);
+    }
+  });
+}
+
+test('deployment smoke runs without supplying an extension ID', async (t) => {
+  const f = await fixture(t);
+  const script = fileURLToPath(new URL('../../../scripts/smoke.mjs', import.meta.url));
+  const { stdout } = await promisify(execFile)(process.execPath, [script, f.base], {
+    env: { ...process.env, MOTRO_EXTENSION_ID: '' }, timeout: 15_000,
+  });
+  assert.match(stdout, /WebSocket pairing\/relay passed/);
 });

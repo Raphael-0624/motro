@@ -9,9 +9,10 @@ const base = new URL(input);
 if (!['http:', 'https:'].includes(base.protocol) || base.pathname !== '/' || base.username || base.password || base.search || base.hash) {
   throw new Error('Use an HTTP/HTTPS origin without credentials or a path.');
 }
-const extensionId = process.env.MOTRO_EXTENSION_ID;
-if (!extensionId || !/^[a-p]{32}$/.test(extensionId)) {
-  throw new Error('Set MOTRO_EXTENSION_ID to a valid extension ID to test the Origin allowlist.');
+// A synthetic extension Origin tests the unrestricted deployment without an installed extension.
+const extensionId = process.env.MOTRO_EXTENSION_ID || 'a'.repeat(32);
+if (!/^[a-p]{32}$/.test(extensionId)) {
+  throw new Error('MOTRO_EXTENSION_ID, when supplied, must be a valid extension ID.');
 }
 const version = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 const sockets = [];

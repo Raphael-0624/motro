@@ -16,7 +16,7 @@ macOS 如弹出网络访问或防火墙提示，需允许 Node.js 接受局域�
 
 ```sh
 curl http://localhost:3030/api/health
-# {"ok":true,"name":"motro","version":"0.1.1"}
+# {"ok":true,"name":"motro","version":"0.1.2"}
 curl http://localhost:3030/api/version
 ```
 
@@ -65,6 +65,12 @@ MOTRO_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 - 未替代的验证：用户真实手机、Edge、跨域 iframe / PDF 兼容性，以及公网部署。
 
 连接页和触控页覆盖小屏、普通手机、短视口、横屏与平板尺寸，检查无页面溢出、操作控件和计数页脚可见，触控区至少占测试视口高度的 60%。滑动惯性已有速度阈值、衰减、最大时长和卡帧保护，仍需真机调节手感。
+
+### 0.1.2 回归范围（2026-11-05）
+
+- 新增默认 / 空白名单下不同扩展 ID 的独立配对和控制测试，仍验证批准前不可控制。
+- 新增不传扩展 ID 的部署 smoke 测试；`npm run verify` 共 23 项测试。
+- 真实扩展端到端测试继续覆盖扫码、授权、闲置连接、惯性及缩放。
 
 ## 手工验收清单
 

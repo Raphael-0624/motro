@@ -17,10 +17,12 @@
 ```sh
 npm ci --omit=dev
 HOST=127.0.0.1 PORT=3030 PUBLIC_URL=https://motro.example.com \
-EXTENSION_IDS=你的扩展ID DATA_DIR=/var/lib/motro npm start
+DATA_DIR=/var/lib/motro npm start
 ```
 
-前面配置 HTTPS 反向代理。`PUBLIC_URL` 用于插件展示手机访问地址，并将域名加入 Host 允许列表；请使用独立域名根路径，首版不支持 `/motro/` 子路径部署。Chrome/Edge 不同安装方式的扩展 ID 可能不同，多个 ID 以逗号分隔。
+前面配置 HTTPS 反向代理。`PUBLIC_URL` 用于插件展示手机访问地址，并将域名加入 Host 允许列表；请使用独立域名根路径，首版不支持 `/motro/` 子路径部署。
+
+当前不启用扩展 ID 白名单：不要设置 `EXTENSION_IDS`，不同电脑无需登记 ID。如以前已配置，从 systemd / 容器 / 环境文件中移除后重启。服务仍校验浏览器来源，并要求手机配对得到电脑确认，不是取消授权。
 
 Nginx 的核心代理配置（证书配置按实际环境补充）：
 
@@ -42,15 +44,15 @@ location / {
 
 ## 版本更新
 
-开发交付运行一次 `npm run version:bump`，提交统一版本和 lockfile。服务器 Agent 更新前记录旧 commit / 版本、备份计数，执行 `npm ci`、`npm run verify`，维护窗口内重启服务，再运行 `MOTRO_EXTENSION_ID=实际扩展ID npm run smoke -- https://实际域名`。smoke 会显式增加两次访问序号。
+开发交付运行一次 `npm run version:bump`，提交统一版本和 lockfile。服务器 Agent 更新前记录旧 commit / 版本、备份计数，执行 `npm ci`、`npm run verify`，维护窗口内重启服务，再运行 `npm run smoke -- https://实际域名`。smoke 默认使用模拟扩展来源，无需提供真实 ID，会显式增加两次访问序号。
 
 网页随服务部署更新，客户端刷新获取新资源。解压安装的插件不会随服务器自动更新：电脑端拉取相同版本源码，在扩展管理页点击重新加载，再配对。浏览器商店自动分发是后续工作，本次不包含商店发布。
 
 ## 公网前必须复核
 
 - HTTPS 证书和 WSS 升级可用，不允许明文公网访问；Node 端口仅向代理开放。
-- 设置 `PUBLIC_URL` 与扩展来源限制，并验证手机、电脑两端均可连通。
-- 控制对外访问范围，优先 VPN、私有网络或受控测试用户。四位码加电脑确认不是完整用户认证系统。
+- 设置 `PUBLIC_URL`，不设置扩展 ID 白名单，验证不同电脑及手机均可连通。
+- 先小规模试用，不增加逐台电脑登记步骤；四位码加电脑确认不是完整用户认证或防滥用系统。
 - 当前服务只按直接连接 IP 限流。在反向代理后，多个用户共享代理 IP，可能互相触发五次配对限制；公开多用户使用前需要实现可信代理 IP 处理及边缘限流，不能盲目信任转发头。
 - 补充公网连接配额、跨 IP 猜码防护、异常流量监控、日志脱敏和访问策略。
 - 不记录令牌。反向代理、浏览器错误追踪也不能收集敏感消息内容。

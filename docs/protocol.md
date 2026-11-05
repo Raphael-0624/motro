@@ -4,9 +4,9 @@
 
 ## HTTP 与扫码入口
 
-- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.1" }`。
-- `GET /api/version`：`{ "version": "0.1.1", "server": "0.1.1", "mobile": "0.1.1", "extension": "0.1.1" }`。
-- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.1" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
+- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.2" }`。
+- `GET /api/version`：`{ "version": "0.1.2", "server": "0.1.2", "mobile": "0.1.2", "extension": "0.1.2" }`。
+- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.2" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
 - `GET /` 和白名单静态资源：手机网页，不增加访问序号；页面随后显式调用 visits。
 
 二维码地址形如 `http://局域网IP:3030/#code=5829`。fragment 不发送给 HTTP 服务；网页读取有效四位码后移除 fragment 并自动提交 `mobile.join`，仍走下方授权流程。连接码不是令牌；过期或已使用时回到输入页。
@@ -26,6 +26,8 @@
 | 服务 → 手机 | `{ "type": "host.status", "connected": false }` | 电脑离线/恢复 |
 
 host token 和 mobile token 是独立的随机值，不可混用。只有扩展浏览器来源（或无 Origin 的原生客户端）可以创建 host 会话；来源检查不能代替授权或生产级防滥用。
+
+当前部署不启用扩展 ID 白名单，不设置 `EXTENSION_IDS`；不同 ID 的扩展可独立创建会话，无需逐台电脑登记。保留扩展来源格式与普通网页同源检查，每个会话仍须对应电脑确认授权。
 
 ## 控制
 

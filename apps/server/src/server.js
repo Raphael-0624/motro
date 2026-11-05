@@ -95,7 +95,7 @@ export function createMotroServer({
     } catch { socket.destroy(); return; }
     const extensionOrigin = origin?.protocol === 'chrome-extension:'
       && /^[a-p]{32}$/.test(origin.hostname)
-      && (!extensionIds || extensionIds.includes(origin.hostname));
+      && (!extensionIds?.length || extensionIds.includes(origin.hostname));
     const pageOrigin = origin && ['http:', 'https:'].includes(origin.protocol)
       && origin.host === request.headers.host;
     // Native test clients have no Origin. Browsers cannot omit or forge it.

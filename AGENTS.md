@@ -9,6 +9,7 @@
 - Run `npm run verify` after changes. Run `npm run test:e2e` when changing pairing, gestures, extension messaging, or zoom behavior.
 - Update `docs/protocol.md` when changing WebSocket messages and extend the server tests for authorization changes.
 - Treat pairing codes as short-lived discovery identifiers, never as long-term authentication. Never forward control before computer approval.
+- Current deployment accepts different computers without an extension-ID whitelist. Do not require users to provide extension IDs or enable `EXTENSION_IDS` by default; retain computer approval and browser Origin checks.
 - Do not log pairing tokens, expose tokens to content scripts, or commit `.env` or browser profiles.
 - Cloud deployment is a later phase. Do not deploy, publish, or expose ports publicly without an explicit request.
 - Keep user-facing copy and development docs in Chinese; identifiers and code comments in English.
