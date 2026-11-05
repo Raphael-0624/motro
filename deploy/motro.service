@@ -1,0 +1,28 @@
+[Unit]
+Description=Motro browser remote relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=motro
+Group=motro
+WorkingDirectory=/opt/motro
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3030
+Environment=DATA_DIR=/var/lib/motro
+EnvironmentFile=/etc/motro.env
+ExecStart=/usr/bin/node /opt/motro/apps/server/src/index.js
+Restart=on-failure
+RestartSec=3
+StateDirectory=motro
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/motro
+
+[Install]
+WantedBy=multi-user.target

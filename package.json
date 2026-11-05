@@ -1,0 +1,32 @@
+{
+  "name": "motro",
+  "version": "0.1.1",
+  "private": true,
+  "description": "A phone trackpad for your desktop browser",
+  "type": "module",
+  "workspaces": [
+    "apps/server",
+    "apps/mobile",
+    "apps/extension"
+  ],
+  "scripts": {
+    "icons": "node scripts/generate-icons.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
+    "vendor:sync": "node scripts/sync-vendor.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "dev": "node --watch apps/server/src/index.js",
+    "start": "node apps/server/src/index.js",
+    "check": "node scripts/check.mjs && node scripts/bump-version.mjs --check",
+    "test": "node --test apps/server/test/*.test.js",
+    "test:e2e": "playwright test",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "qrcode-generator": "^2.0.4"
+  }
+}

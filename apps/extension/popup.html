@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Motro</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+    <link rel="stylesheet" href="popup.css">
+    <script type="module" src="popup.js"></script>
+  </head>
+  <body>
+    <header><div class="brand"><img class="brand-icon" src="icons/icon-128.png" width="32" height="32" alt=""><span class="wordmark">motro<span>.</span></span></div><span id="app-version"></span></header>
+    <main>
+      <section id="start-view"><button id="start" class="primary full" type="button">启动</button></section>
+      <section id="connecting-view" class="center" hidden><span class="spinner" aria-hidden="true"></span><p role="status">连接服务中…</p></section>
+      <section id="pair-view" hidden>
+        <div class="code-row"><span id="code" aria-label="连接码">----</span><button id="refresh" class="text-button" type="button">刷新</button></div>
+        <div id="phone-address" class="center">
+          <canvas id="qr" role="img" aria-label="扫描二维码打开手机触控板"></canvas>
+          <p class="hint">扫描二维码</p>
+          <button id="copy-url" class="address-button" type="button" title="点击复制手机地址"><span id="phone-url"></span><span id="copy-label">复制</span></button>
+        </div>
+      </section>
+      <section id="approval" class="center" hidden><p role="status">手机请求连接</p><div class="actions"><button id="allow" class="primary" type="button">确认授权</button><button id="deny" type="button">拒绝</button></div></section>
+      <section id="connected-view" class="center" hidden><p id="connection-status" class="live" role="status">连接中</p></section>
+      <p id="error" role="alert" hidden></p>
+      <button id="stop" class="full stop" type="button" hidden>结束</button>
+    </main>
+  </body>
+</html>

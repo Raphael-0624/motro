@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#edece3">
+    <title>Motro — 手机触控板</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png">
+    <link rel="icon" type="image/png" sizes="128x128" href="/assets/icon-128.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+    <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="Motro 首页"><img class="brand-icon" src="/assets/icon-128.png" width="32" height="32" alt=""><span class="wordmark">motro<span>.</span></span></a>
+        <button id="disconnect" class="text-button" type="button" hidden>断开</button>
+      </header>
+
+      <section id="pair-view" class="pair-view">
+        <div class="pair-content">
+        <h1 id="pair-title">输入四位连接码</h1>
+        <form id="pair-form" class="pair-card">
+          <div class="code-row">
+            <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4}" maxlength="4" placeholder="0000" required aria-labelledby="pair-title" aria-describedby="pair-status">
+            <button id="connect" class="connect" type="submit">连接</button>
+          </div>
+          <p id="pair-status" class="status" role="status">在电脑 Motro 插件中获取连接码。</p>
+        </form>
+        </div>
+        <div class="pair-footer"><span id="visit-count" hidden></span><span id="app-version" hidden></span></div>
+      </section>
+
+      <section id="waiting-view" class="waiting-view" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <p id="waiting-status" class="status" role="status">在电脑上确认授权</p>
+        <button id="cancel" class="text-button" type="button">取消</button>
+      </section>
+
+      <section id="remote-view" hidden>
+        <div class="connection-status">
+          <span id="connection-dot" class="dot" aria-hidden="true"></span>
+          <p id="remote-status" class="status" role="status">已连接</p>
+        </div>
+        <div id="trackpad" class="trackpad" aria-label="触控板：单指滑动滚动，双指捏合缩放">
+          <span class="pad-hint">单指滚动 · 双指缩放</span>
+        </div>
+        <div class="toolbar">
+          <div class="zoom-controls" aria-label="页面缩放">
+            <button id="zoom-out" type="button" aria-label="缩小页面">−</button>
+            <button id="reset-zoom" type="button">重置缩放</button>
+            <button id="zoom-in" type="button" aria-label="放大页面">+</button>
+          </div>
+          <label class="sensitivity" for="speed">滚动速度<input id="speed" type="range" min="0.5" max="3" step="0.1" value="1.5"></label>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

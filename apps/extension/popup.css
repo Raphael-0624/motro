@@ -1,0 +1,35 @@
+:root { font-family: "Avenir Next", "PingFang SC", "Trebuchet MS", sans-serif; color: #242820; background: #edece3; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { width: 310px; padding: 20px; margin: 0; background: radial-gradient(ellipse at 100% 0, #dce8c7, transparent 60%); }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+.brand { display: inline-flex; align-items: center; gap: 9px; }
+.brand-icon { display: block; object-fit: contain; }
+.wordmark { font: bold 32px Georgia, serif; letter-spacing: -2px; }
+.wordmark > span { color: #739237; }
+#app-version { font-size: 10px; color: #6c7166; }
+button { cursor: pointer; border: 1px solid #c8cebb; border-radius: 10px; min-height: 42px; padding: 9px 14px; color: #242820; background: transparent; font: inherit; font-size: 13px; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible { outline: 2px solid #739237; outline-offset: 3px; }
+.primary { background: #c4ec67; border-color: #c4ec67; }
+.full { width: 100%; }
+.center { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+p { margin: 0; font-size: 13px; line-height: 1.6; }
+#connecting-view, #connected-view { padding: 20px 0 24px; }
+.code-row { position: relative; display: flex; justify-content: center; align-items: center; margin: 4px 0 20px; min-height: 66px; }
+#code { font-size: 44px; letter-spacing: 9px; padding-left: 9px; font-variant-numeric: tabular-nums; }
+#refresh { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.text-button { border: 0; padding: 8px 4px; font-size: 12px; color: #6c7166; }
+#qr { display: block; width: 156px; height: 156px; border-radius: 8px; }
+.hint { font-size: 11px; color: #6c7166; }
+.address-button { display: flex; width: 100%; gap: 12px; justify-content: space-between; align-items: center; font-size: 11px; border-color: #d1d4c5; }
+#phone-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#copy-label { flex-shrink: 0; color: #6c7166; }
+.actions { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+.actions button { flex: 1; }
+.stop { margin-top: 20px; }
+.live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #739237; margin-right: 8px; vertical-align: middle; }
+#error { margin-top: 12px; font-size: 12px; color: #a13828; }
+.spinner { width: 24px; height: 24px; border: 2px solid #d1d4c5; border-top-color: #739237; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
