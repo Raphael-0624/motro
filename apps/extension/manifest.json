@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Motro — 手机触控板",
   "description": "用手机控制当前网页的滚动和缩放。",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",
@@ -12,11 +12,23 @@
   },
   "permissions": [
     "storage",
-    "debugger",
+    "scripting",
     "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
   "background": {
     "service_worker": "background.js",

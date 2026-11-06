@@ -24,6 +24,22 @@ const pointers = new Map();
 const momentum = new ScrollMomentum();
 let momentumFrame = 0;
 let singleFingerGesture = false;
+let scrollMode = sessionStorage.getItem('motro.scrollMode') === 'horizontal' ? 'horizontal' : 'vertical';
+
+function renderScrollMode() {
+  const horizontal = scrollMode === 'horizontal';
+  $('scroll-mode').textContent = horizontal ? '左右' : '上下';
+  $('scroll-mode').setAttribute('aria-pressed', String(horizontal));
+  $('scroll-mode').setAttribute('aria-label', horizontal ? '滚动模式：左右，点击切换上下' : '滚动模式：上下，点击切换左右');
+  $('pad-hint').textContent = `${horizontal ? '左右' : '上下'}滚动 · 双指缩放`;
+}
+renderScrollMode();
+$('scroll-mode').addEventListener('click', () => {
+  clearGesture();
+  scrollMode = scrollMode === 'vertical' ? 'horizontal' : 'vertical';
+  sessionStorage.setItem('motro.scrollMode', scrollMode);
+  renderScrollMode();
+});
 
 // iOS keyboards can resize the visual viewport without updating CSS viewport units.
 function syncViewport() {
@@ -71,7 +87,7 @@ function setOnline(online) {
   hostConnected = online;
   $('connection-dot').classList.toggle('offline', !online);
   $('trackpad').classList.toggle('disabled', !online);
-  for (const id of ['zoom-out', 'zoom-in', 'reset-zoom']) $(id).disabled = !online;
+  for (const id of ['zoom-out', 'zoom-in', 'reset-zoom', 'scroll-mode']) $(id).disabled = !online;
   clearGesture();
 }
 
@@ -241,8 +257,8 @@ pad.addEventListener('pointermove', (event) => {
   const before = distance();
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 1) {
-    const dx = -(event.clientX - old.x) * Number($('speed').value);
-    const dy = -(event.clientY - old.y) * Number($('speed').value);
+    const dx = scrollMode === 'horizontal' ? -(event.clientX - old.x) * Number($('speed').value) : 0;
+    const dy = scrollMode === 'vertical' ? -(event.clientY - old.y) * Number($('speed').value) : 0;
     scrollX += dx; scrollY += dy;
     if (singleFingerGesture) momentum.sample(dx, dy, event.timeStamp);
   } else if (pointers.size === 2 && before > 12) {

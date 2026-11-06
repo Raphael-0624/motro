@@ -9,7 +9,7 @@ const executablePath = process.env.MOTRO_CHROME_PATH;
 async function expectSingleScreen(page, remote = false) {
   await expect.poll(() => page.evaluate((isRemote) => {
     const viewport = window.visualViewport?.height ?? innerHeight;
-    const ids = isRemote ? ['disconnect', 'trackpad', 'reset-zoom', 'speed'] : ['code', 'connect', 'visit-count', 'app-version'];
+    const ids = isRemote ? ['disconnect', 'trackpad', 'scroll-mode', 'reset-zoom', 'speed'] : ['code', 'connect', 'visit-count', 'app-version'];
     const controlsFit = ids.every((id) => {
       const rect = document.getElementById(id).getBoundingClientRect();
       return rect.top >= 0 && rect.bottom <= viewport + 1 && rect.left >= 0 && rect.right <= innerWidth + 1;
@@ -26,6 +26,7 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
   const extensionPath = path.resolve('apps/extension');
   let desktop;
   let phoneBrowser;
+  let target;
   try {
     desktop = await chromium.launchPersistentContext(profile, {
       ...(executablePath ? { executablePath } : { channel: 'chromium' }),
@@ -35,6 +36,9 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
         : [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
     });
     if (executablePath) {
+      // Existing tabs need the on-demand content-script fallback after installation.
+      target = await desktop.newPage();
+      await target.goto(serverUrl);
       const cdp = await desktop.browser().newBrowserCDPSession();
       await cdp.send('Extensions.loadUnpacked', { path: extensionPath });
       await cdp.detach();
@@ -68,8 +72,10 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     await popup.screenshot({ path: 'test-results/extension-code.png' });
 
     // The controlled page is a real HTTP tab, not a privileged browser page.
-    const target = await desktop.newPage();
-    await target.goto(serverUrl);
+    if (!target) {
+      target = await desktop.newPage();
+      await target.goto(serverUrl);
+    }
     await expect(target.locator('#visit-count')).toHaveText(/^no\.\d+$/);
     await target.evaluate(() => {
       document.documentElement.style.overflow = 'auto';
@@ -161,22 +167,16 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     expect(await target.evaluate(() => scrollY)).toBe(stoppedAt);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
-    // A canvas handles trusted wheel input itself; there is no DOM scroll container.
+    // A two-axis DOM scroller remains controlled at the center, not the actual mouse.
+    expect(await worker.evaluate(() => chrome.runtime.getManifest().permissions.includes('debugger'))).toBe(false);
     await target.evaluate(() => {
-      const canvas = document.createElement('canvas');
-      canvas.id = 'canvas-target';
-      canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;background:#eee';
-      globalThis.__canvasWheel = { x: 0, y: 0, trusted: false, clientX: 0, clientY: 0 };
-      canvas.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        if (!event.isTrusted) return;
-        const input = globalThis.__canvasWheel;
-        input.x += event.deltaX; input.y += event.deltaY;
-        input.trusted = event.isTrusted; input.clientX = event.clientX; input.clientY = event.clientY;
-      }, { passive: false });
-      document.body.append(canvas);
+      const panel = document.createElement('div');
+      panel.id = 'wide-target';
+      panel.style.cssText = 'position:fixed;inset:20%;overflow:auto;z-index:9999;background:#eee';
+      const content = document.createElement('div');
+      content.style.cssText = 'width:5000px;height:5000px';
+      panel.append(content); document.body.append(panel);
     });
-    // The real mouse sits in the corner, but native wheel events must hit the center.
     await target.mouse.move(5, 5);
     const swipe = async (dx, dy) => {
       await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
@@ -184,42 +184,63 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
       await phone.waitForTimeout(100);
       await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     };
-    await swipe(-100, 0);
-    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeGreaterThan(80);
-    const beforeReverse = await target.evaluate(() => globalThis.__canvasWheel.x);
+    const position = () => target.locator('#wide-target').evaluate((el) => ({ x: el.scrollLeft, y: el.scrollTop }));
+    await expect(phone.locator('#scroll-mode')).toHaveText('上下');
+    await swipe(-40, -100);
+    await expect.poll(async () => (await position()).y).toBeGreaterThan(80);
+    expect((await position()).x).toBe(0);
+    await phone.locator('#scroll-mode').click();
+    await expect(phone.locator('#scroll-mode')).toHaveText('左右');
+    const beforeHorizontal = await position();
+    await swipe(-100, -40);
+    await expect.poll(async () => (await position()).x).toBeGreaterThan(80);
+    expect((await position()).y).toBe(beforeHorizontal.y);
     await swipe(100, 0);
-    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeLessThan(beforeReverse - 80);
-    await swipe(0, -100);
-    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.y)).toBeGreaterThan(80);
-    const input = await target.evaluate(() => ({ ...globalThis.__canvasWheel, width: innerWidth, height: innerHeight }));
-    expect(input.trusted).toBe(true);
-    expect(Math.abs(input.clientX - input.width / 2)).toBeLessThanOrEqual(1);
-    expect(Math.abs(input.clientY - input.height / 2)).toBeLessThanOrEqual(1);
-    const beforeStream = await target.evaluate(() => globalThis.__canvasWheel.x);
+    await expect.poll(async () => (await position()).x).toBeLessThan(30);
     const speed = Number(await phone.locator('#speed').inputValue());
+    const beforeStream = (await position()).x;
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
     for (let offset = 5; offset <= 100; offset += 5) {
       await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x - offset, y: point.y, id: 1 }] });
     }
     await phone.waitForTimeout(100);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeCloseTo(beforeStream + 100 * speed, 0);
-    await target.locator('#canvas-target').evaluate((element) => element.remove());
-
-    // Also exercise the browser's default horizontal scrolling, not just a wheel handler.
-    await target.evaluate(() => {
-      const panel = document.createElement('div');
-      panel.id = 'wide-target';
-      panel.style.cssText = 'position:fixed;inset:20%;overflow:auto;z-index:9999;background:#eee';
-      const content = document.createElement('div');
-      content.style.cssText = 'width:5000px;height:100%';
-      panel.append(content); document.body.append(panel);
-    });
-    await swipe(-100, 0);
-    await expect.poll(() => target.locator('#wide-target').evaluate((element) => element.scrollLeft)).toBeGreaterThan(80);
-    await swipe(100, 0);
-    await expect.poll(() => target.locator('#wide-target').evaluate((element) => element.scrollLeft)).toBeLessThan(30);
+    await expect.poll(async () => (await position()).x).toBeCloseTo(beforeStream + 100 * speed, 0);
+    await phone.locator('#scroll-mode').click();
+    const beforeVertical = await position();
+    await swipe(0, -100);
+    await expect.poll(async () => (await position()).y).toBeGreaterThan(beforeVertical.y + 80);
+    expect((await position()).x).toBeCloseTo(beforeVertical.x, 0);
     await target.locator('#wide-target').evaluate((element) => element.remove());
+
+    // A horizontal-only child must never trap subsequent vertical input to its parent.
+    await target.evaluate(() => {
+      const parent = document.createElement('div');
+      parent.id = 'nested-target';
+      parent.style.cssText = 'position:fixed;inset:20%;overflow:auto;z-index:9999;background:#eee';
+      const child = document.createElement('div');
+      child.id = 'horizontal-child';
+      child.style.cssText = 'position:sticky;top:0;width:100%;height:100%;overflow-x:auto;overflow-y:hidden';
+      const wide = document.createElement('div');
+      wide.style.cssText = 'width:5000px;height:100%';
+      child.append(wide);
+      const spacer = document.createElement('div');
+      spacer.style.height = '5000px';
+      parent.append(child, spacer); document.body.append(parent);
+    });
+    for (let i = 0; i < 3; i++) {
+      await phone.locator('#scroll-mode').click();
+      const x = await target.locator('#horizontal-child').evaluate((el) => el.scrollLeft);
+      await swipe(-100, 0);
+      await expect.poll(() => target.locator('#horizontal-child').evaluate((el) => el.scrollLeft)).toBeGreaterThan(x + 80);
+      await phone.locator('#scroll-mode').click();
+      const y = await target.locator('#nested-target').evaluate((el) => el.scrollTop);
+      await swipe(0, -100);
+      await expect.poll(() => target.locator('#nested-target').evaluate((el) => el.scrollTop)).toBeGreaterThan(y + 80);
+      await swipe(0, 100);
+      await expect.poll(() => target.locator('#nested-target').evaluate((el) => el.scrollTop)).toBeLessThan(y + 30);
+    }
+    await target.locator('#nested-target').evaluate((element) => element.remove());
 
     const zoom = () => worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -240,21 +261,16 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect.poll(zoom).toBeGreaterThan(1.2);
 
+    await phone.locator('#scroll-mode').click();
+    await expect(phone.locator('#scroll-mode')).toHaveText('左右');
     await phone.reload();
     await expect(phone.locator('#remote-status')).toContainText('已连接');
+    await expect(phone.locator('#scroll-mode')).toHaveText('左右');
     await expect.poll(async () => Number((await phone.locator('#visit-count').textContent()).slice(3))).toBe(firstVisit + 2);
     await phone.screenshot({ path: 'test-results/mobile-connected.png', fullPage: true });
     await phone.locator('#disconnect').click();
     await expect(phone.locator('#pair-view')).toBeVisible();
     await expect.poll(() => worker.evaluate(async () => (await chrome.storage.session.get('motro')).motro.paired)).toBe(false);
-    // Playwright itself attaches to tabs too; prove our extension released its own attachment.
-    await expect.poll(() => worker.evaluate(async () => {
-      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-      try { await chrome.debugger.attach({ tabId: tab.id }, '1.3'); }
-      catch { return false; }
-      await chrome.debugger.detach({ tabId: tab.id });
-      return true;
-    })).toBe(true);
     expect(pageErrors).toEqual([]);
   } finally {
     await phoneBrowser?.close();
