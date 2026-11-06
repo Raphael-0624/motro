@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 
-const source = await readFile(new URL('../../extension/background.js', import.meta.url), 'utf8');
+const source = (await readFile(new URL('../../extension/background.js', import.meta.url), 'utf8'))
+  .replace("import { NativeWheel } from './native-wheel.js';", '');
 const cloud = 'https://motro.rafa.love';
 
 function background({ local = {}, session = {} } = {}) {
@@ -12,6 +13,8 @@ function background({ local = {}, session = {} } = {}) {
   const connections = [];
   let listener;
   const chrome = {
+    tabs: { onActivated: { addListener() {} } },
+    windows: { onFocusChanged: { addListener() {} } },
     storage: {
       local: {
         async get(key) { return { [key]: local[key] }; },
@@ -41,6 +44,7 @@ function background({ local = {}, session = {} } = {}) {
   }
   runInNewContext(source, {
     chrome, WebSocket, URL,
+    NativeWheel: class { release() {} },
     setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
   });
   return {

@@ -150,11 +150,67 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect.poll(() => target.evaluate(() => scrollY)).toBeGreaterThan(beforeFling + 215);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
-    await phone.waitForTimeout(70);
+    // Touch stops emitting momentum immediately; Chromium may finish an in-flight native wheel animation.
+    await expect.poll(async () => {
+      const before = await target.evaluate(() => scrollY);
+      await phone.waitForTimeout(100);
+      return (await target.evaluate(() => scrollY)) - before;
+    }, { timeout: 2000 }).toBe(0);
     const stoppedAt = await target.evaluate(() => scrollY);
     await phone.waitForTimeout(120);
     expect(await target.evaluate(() => scrollY)).toBe(stoppedAt);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+    // A canvas handles trusted wheel input itself; there is no DOM scroll container.
+    await target.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas-target';
+      canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;background:#eee';
+      globalThis.__canvasWheel = { x: 0, y: 0, trusted: false, clientX: 0, clientY: 0 };
+      canvas.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        if (!event.isTrusted) return;
+        const input = globalThis.__canvasWheel;
+        input.x += event.deltaX; input.y += event.deltaY;
+        input.trusted = event.isTrusted; input.clientX = event.clientX; input.clientY = event.clientY;
+      }, { passive: false });
+      document.body.append(canvas);
+    });
+    // The real mouse sits in the corner, but native wheel events must hit the center.
+    await target.mouse.move(5, 5);
+    const swipe = async (dx, dy) => {
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x + dx, y: point.y + dy, id: 1 }] });
+      await phone.waitForTimeout(100);
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await swipe(-100, 0);
+    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeGreaterThan(80);
+    const beforeReverse = await target.evaluate(() => globalThis.__canvasWheel.x);
+    await swipe(100, 0);
+    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeLessThan(beforeReverse - 80);
+    await swipe(0, -100);
+    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.y)).toBeGreaterThan(80);
+    const input = await target.evaluate(() => ({ ...globalThis.__canvasWheel, width: innerWidth, height: innerHeight }));
+    expect(input.trusted).toBe(true);
+    expect(Math.abs(input.clientX - input.width / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(input.clientY - input.height / 2)).toBeLessThanOrEqual(1);
+    await target.locator('#canvas-target').evaluate((element) => element.remove());
+
+    // Also exercise the browser's default horizontal scrolling, not just a wheel handler.
+    await target.evaluate(() => {
+      const panel = document.createElement('div');
+      panel.id = 'wide-target';
+      panel.style.cssText = 'position:fixed;inset:20%;overflow:auto;z-index:9999;background:#eee';
+      const content = document.createElement('div');
+      content.style.cssText = 'width:5000px;height:100%';
+      panel.append(content); document.body.append(panel);
+    });
+    await swipe(-100, 0);
+    await expect.poll(() => target.locator('#wide-target').evaluate((element) => element.scrollLeft)).toBeGreaterThan(80);
+    await swipe(100, 0);
+    await expect.poll(() => target.locator('#wide-target').evaluate((element) => element.scrollLeft)).toBeLessThan(30);
+    await target.locator('#wide-target').evaluate((element) => element.remove());
 
     const zoom = () => worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -182,6 +238,14 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     await phone.locator('#disconnect').click();
     await expect(phone.locator('#pair-view')).toBeVisible();
     await expect.poll(() => worker.evaluate(async () => (await chrome.storage.session.get('motro')).motro.paired)).toBe(false);
+    // Playwright itself attaches to tabs too; prove our extension released its own attachment.
+    await expect.poll(() => worker.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      try { await chrome.debugger.attach({ tabId: tab.id }, '1.3'); }
+      catch { return false; }
+      await chrome.debugger.detach({ tabId: tab.id });
+      return true;
+    })).toBe(true);
     expect(pageErrors).toEqual([]);
   } finally {
     await phoneBrowser?.close();

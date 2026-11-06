@@ -4,9 +4,9 @@
 
 ## HTTP 与扫码入口
 
-- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.3" }`。
-- `GET /api/version`：`{ "version": "0.1.3", "server": "0.1.3", "mobile": "0.1.3", "extension": "0.1.3" }`。
-- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.3" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
+- `GET /api/health`：`{ "ok": true, "name": "motro", "version": "0.1.4" }`。
+- `GET /api/version`：`{ "version": "0.1.4", "server": "0.1.4", "mobile": "0.1.4", "extension": "0.1.4" }`。
+- `POST /api/visits`：原子递增并返回 `{ "count": 1, "version": "0.1.4" }`，网页每次文档加载仅调用一次，不重试；检查同源浏览器 Origin。非身份 / 独立访客统计接口。
 - `GET /` 和白名单静态资源：手机网页，不增加访问序号；页面随后显式调用 visits。
 
 二维码地址形如 `http://局域网IP:3030/#code=5829`。fragment 不发送给 HTTP 服务；网页读取有效四位码后移除 fragment 并自动提交 `mobile.join`，仍走下方授权流程。连接码不是令牌；过期或已使用时回到输入页。
@@ -35,7 +35,7 @@ host token 和 mobile token 是独立的随机值，不可混用。只有扩展�
 { "type": "control", "action": "scroll", "dx": 0, "dy": 120 }
 ```
 
-`dx/dy` 是目标网页 CSS 像素位移，正 `dy` 向下浏览。必须是有限数字，每次转发限制在 `[-1500, 1500]`。
+`dx/dy` 是以目标网页 CSS 像素为单位的滚轮增量，正 `dx` 向右、正 `dy` 向下浏览。必须是有限数字，每次转发限制在 `[-1500, 1500]`。0.1.4 起扩展将两轴传给视口中心的原生鼠标滚轮，实际响应由浏览器或 Canvas 应用处理，协议消息不变。
 
 ```json
 { "type": "control", "action": "zoom", "factor": 1.08 }

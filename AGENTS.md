@@ -9,6 +9,7 @@
 - Run `npm run verify` after changes. Run `npm run test:e2e` when changing pairing, gestures, extension messaging, or zoom behavior.
 - Update `docs/protocol.md` when changing WebSocket messages and extend the server tests for authorization changes.
 - Treat pairing codes as short-lived discovery identifiers, never as long-term authentication. Never forward control before computer approval.
+- Scrolling uses native debugger wheel input at the viewport center, not DOM container search or synthetic WheelEvents. Disclose the debugger permission/banner, release on stop/disconnect/target change, and do not claim actual Feishu compatibility without testing it.
 - Current deployment accepts different computers without an extension-ID whitelist. Do not require users to provide extension IDs or enable `EXTENSION_IDS` by default; retain computer approval and browser Origin checks.
 - Do not log pairing tokens, expose tokens to content scripts, or commit `.env` or browser profiles.
 - Cloud deployment and server updates are handled separately by the server agent. Do not deploy, publish, or expose ports publicly without an explicit request.

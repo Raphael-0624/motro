@@ -12,7 +12,7 @@ Node.js 服务 (apps/server)
       │ WebSocket 转发，只有已获确认的手机可以发送控制
       ▼
 浏览器扩展后台 (apps/extension/background.js)
-      ├─ content.js → 目标网页内的滚动容器
+      ├─ native-wheel.js → debugger → 页面中心原生鼠标滚轮
       └─ chrome.tabs.setZoom → 标签页原生缩放
 ```
 
@@ -39,7 +39,11 @@ Node.js 服务 (apps/server)
 
 ## 手势、版本与持久化
 
-轻量惯性在手机 `inertia.js` 计算：取最近位移样本估计松手速度，超过阈值才指数衰减续滑；最大时长 600ms。新触摸、双指手势、页面隐藏或断线会停止，卡帧时终止以避免跳跃。它仍发送普通 `control/scroll`，不增加协议动作。
+单指位移同时支持 `dx` / `dy`。扩展用 `chrome.debugger` 附着当前标签页，只读取视口尺寸，通过 `Input.dispatchMouseEvent` 在视口中心发送 `mouseMoved` / `mouseWheel`，由浏览器和 Canvas 应用自行处理可信滚轮输入，不遍历 DOM、也不调用容器 `scrollBy`。不会移动系统光标。
+
+调试会话串行使用；停止、手机离线、切换标签页或窗口时释放，防止退出后继续输入。外部取消调试会阻止立即重新附着。权限范围较大且有浏览器调试提示，不可隐藏提示；与开发者工具 / 其他调试插件可能冲突。Canvas 处理器已自动测试，实际飞书登录文档仍待手工验收。
+
+轻量惯性在手机 `inertia.js` 计算：取最近位移样本估计松手速度，超过阈值才指数衰减续滑；最大时长 600ms。新触摸、双指手势、页面隐藏或断线会停止续发，卡帧时终止以避免跳跃。原生输入已触发的浏览器平滑滚动可能短暂收尾，不能同步撤回已发送的滚轮。它仍发送普通 `control/scroll`，不增加协议动作。
 
 服务、网页、插件统一版本，由 `scripts/bump-version.mjs` 管理；API 与 UI 均可查看。每次交付递增一次。
 
@@ -50,11 +54,11 @@ Node.js 服务 (apps/server)
 ## 扩展权限
 
 - `storage`：本地仅保存显式调试地址 `serverUrlOverride`，不再持久化默认地址；session storage 保存同服务后台重启需要的临时状态和令牌。切换服务清除旧令牌，避免跨来源复用。
-- `scripting`：为扩展加载之前已经打开的网页补注入滚动脚本。
+- `debugger`：发送页面中心的原生鼠标滚轮，响应 Canvas 自定义处理器；仅批准后的滚动按需附着，正常结束或切换目标时释放。此权限较敏感，会出现浏览器提示，不再使用 `scripting` 或内容脚本。
 - `alarms`：后台恢复检查。
 - `<all_urls>`：支持用户主动切换的任意普通网页。只有 `activeTab` 权限不能持续控制后续切换的标签页。
 
-手机令牌只保存在手机当前标签页的 `sessionStorage`；host token 在扩展的 `chrome.storage.session`，不发送给弹窗界面或内容脚本。内容脚本只接收滚动距离，不接触配对令牌。
+手机令牌只保存在手机当前标签页的 `sessionStorage`；host token 在扩展的 `chrome.storage.session`，不发送给弹窗或被控制网页。调试读取仅用于视口尺寸，不向服务器传输网页内容。
 
 ## 安全与生产边界
 

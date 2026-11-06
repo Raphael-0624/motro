@@ -1,4 +1,7 @@
+import { NativeWheel } from './native-wheel.js';
+
 const DEFAULT_SERVER = 'https://motro.rafa.love';
+const wheel = new NativeWheel(chrome.debugger);
 let state = {
   enabled: false, serverUrl: DEFAULT_SERVER, token: null, code: '', expiresAt: 0,
   mobileUrls: [], connected: false, paired: false, mobileConnected: false, pending: null, error: '',
@@ -68,6 +71,7 @@ function connect() {
         connected: true, error: '',
       });
       retries = 0;
+      if (!state.mobileConnected) wheel.release();
       await publish();
     } else if (data.type === 'control') {
       enqueueControl(data);
@@ -89,6 +93,7 @@ function connect() {
     clearTimeout(connectTimeout);
     clearInterval(heartbeat);
     state.connected = false; state.mobileConnected = false;
+    wheel.release();
     if (state.enabled) {
       state.error = '服务暂不可用，正在重连。';
       retryTimer = setTimeout(connect, Math.min(2000 * 2 ** retries++, 30_000));
@@ -115,13 +120,7 @@ async function flushControls() {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab?.id || !/^https?:\/\//.test(tab.url || '')) throw new Error('请切换到普通网站；浏览器内部页面不支持控制。');
     if (command.dx || command.dy) {
-      const message = { type: 'motro.scroll', dx: command.dx, dy: command.dy };
-      try { await chrome.tabs.sendMessage(tab.id, message); }
-      catch {
-        // Also supports tabs opened before the extension was loaded.
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-        await chrome.tabs.sendMessage(tab.id, message);
-      }
+      await wheel.scroll(tab.id, command.dx, command.dy, () => state.enabled && state.mobileConnected);
     }
     if (command.reset || command.factor !== 1) {
       const current = command.reset ? 1 : await chrome.tabs.getZoom(tab.id);
@@ -143,6 +142,7 @@ async function flushControls() {
 
 function stop() {
   state.enabled = false;
+  wheel.release();
   send({ type: 'host.end' });
   clearInterval(heartbeat);
   clearTimeout(retryTimer);
@@ -176,6 +176,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   await ready;
   if (alarm.name === 'motro-reconnect') connect();
 });
+
+chrome.tabs.onActivated.addListener(() => wheel.release());
+chrome.windows.onFocusChanged.addListener(() => wheel.release());
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup.html')) return false;
