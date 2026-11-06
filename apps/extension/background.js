@@ -107,7 +107,14 @@ function enqueueControl(message) {
   if (message.action === 'scroll') { pendingControl.dx += message.dx; pendingControl.dy += message.dy; }
   if (message.action === 'zoom') pendingControl.factor = Math.max(0.1, Math.min(10, pendingControl.factor * message.factor));
   if (message.action === 'resetZoom') { pendingControl.reset = true; pendingControl.factor = 1; }
-  if (!controlTimer && !processing) controlTimer = setTimeout(flushControls, 16);
+  if (!controlTimer && !processing) controlTimer = setTimeout(flushControls, 0);
+}
+
+function controlError(error) {
+  if (state.enabled && state.mobileConnected && Date.now() - lastFeedback > 3000) {
+    lastFeedback = Date.now();
+    send({ type: 'host.feedback', message: error.message.startsWith('请') ? error.message : '此页面不允许控制，请切换到普通网站后重试。' });
+  }
 }
 
 async function flushControls() {
@@ -120,7 +127,8 @@ async function flushControls() {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab?.id || !/^https?:\/\//.test(tab.url || '')) throw new Error('请切换到普通网站；浏览器内部页面不支持控制。');
     if (command.dx || command.dy) {
-      await wheel.scroll(tab.id, command.dx, command.dy, () => state.enabled && state.mobileConnected);
+      const ticket = await wheel.submit(tab.id, command.dx, command.dy, () => state.enabled && state.mobileConnected);
+      ticket?.completion.catch(controlError);
     }
     if (command.reset || command.factor !== 1) {
       const current = command.reset ? 1 : await chrome.tabs.getZoom(tab.id);
@@ -128,14 +136,11 @@ async function flushControls() {
       await chrome.tabs.setZoom(tab.id, Math.max(0.25, Math.min(3, current * command.factor)));
     }
   } catch (error) {
-    if (Date.now() - lastFeedback > 3000) {
-      lastFeedback = Date.now();
-      send({ type: 'host.feedback', message: error.message.startsWith('请') ? error.message : '此页面不允许控制，请切换到普通网站后重试。' });
-    }
+    controlError(error);
   } finally {
     processing = false;
     if (pendingControl.dx || pendingControl.dy || pendingControl.factor !== 1 || pendingControl.reset) {
-      controlTimer = setTimeout(flushControls, 16);
+      controlTimer = setTimeout(flushControls, 0);
     }
   }
 }
@@ -179,6 +184,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.tabs.onActivated.addListener(() => wheel.release());
 chrome.windows.onFocusChanged.addListener(() => wheel.release());
+chrome.windows.onBoundsChanged.addListener(() => wheel.invalidate());
+chrome.tabs.onZoomChange.addListener((change) => wheel.invalidate(change.tabId));
+chrome.tabs.onUpdated.addListener((id, change) => {
+  if (change.status === 'loading' || change.url) wheel.invalidate(id);
+});
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup.html')) return false;

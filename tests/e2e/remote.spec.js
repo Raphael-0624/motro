@@ -195,6 +195,15 @@ test('phone pairs with real extension and controls scrolling and native zoom', a
     expect(input.trusted).toBe(true);
     expect(Math.abs(input.clientX - input.width / 2)).toBeLessThanOrEqual(1);
     expect(Math.abs(input.clientY - input.height / 2)).toBeLessThanOrEqual(1);
+    const beforeStream = await target.evaluate(() => globalThis.__canvasWheel.x);
+    const speed = Number(await phone.locator('#speed').inputValue());
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
+    for (let offset = 5; offset <= 100; offset += 5) {
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x - offset, y: point.y, id: 1 }] });
+    }
+    await phone.waitForTimeout(100);
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(() => target.evaluate(() => globalThis.__canvasWheel.x)).toBeCloseTo(beforeStream + 100 * speed, 0);
     await target.locator('#canvas-target').evaluate((element) => element.remove());
 
     // Also exercise the browser's default horizontal scrolling, not just a wheel handler.

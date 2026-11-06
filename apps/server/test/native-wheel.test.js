@@ -4,6 +4,7 @@ import { NativeWheel } from '../../extension/native-wheel.js';
 
 function fixture() {
   const calls = [];
+  let time = 0;
   let onDetach;
   const api = {
     onDetach: { addListener(listener) { onDetach = listener; } },
@@ -14,7 +15,7 @@ function fixture() {
       return { result: { value: { x: 640, y: 360 } } };
     },
   };
-  return { api, calls, wheel: new NativeWheel(api), detach: (id) => onDetach({ tabId: id }) };
+  return { api, calls, wheel: new NativeWheel(api, { now: () => time }), advance: (ms) => { time += ms; }, detach: (id) => onDetach({ tabId: id }) };
 }
 
 test('native wheel dispatches both axes at the current viewport center', async () => {
@@ -66,4 +67,56 @@ test('inactive sessions and failed attach do not inject input', async () => {
   api.attach = async () => { throw new Error('Another debugger is attached'); };
   await assert.rejects(wheel.scroll(10, 100, 0, () => true), /关闭该网页的开发者工具/);
   assert.deepEqual(calls, []);
+});
+
+test('continuous scrolling uses one center lookup and pointer move per burst', async () => {
+  const { wheel, calls, advance } = fixture();
+  for (let i = 0; i < 60; i++) {
+    await wheel.scroll(10, 4, 2, () => true);
+    advance(16);
+  }
+  assert.equal(calls.filter(([kind]) => kind === 'Runtime.evaluate').length, 1);
+  const input = calls.filter(([kind]) => kind === 'Input.dispatchMouseEvent');
+  assert.equal(input.filter(([, , parameters]) => parameters.type === 'mouseMoved').length, 1);
+  assert.equal(input.filter(([, , parameters]) => parameters.type === 'mouseWheel').length, 60);
+  wheel.invalidate();
+  await wheel.scroll(10, 4, 0, () => true);
+  advance(200);
+  await wheel.scroll(10, 4, 0, () => true);
+  assert.equal(calls.filter(([kind]) => kind === 'Runtime.evaluate').length, 3);
+});
+
+test('native wheel pipeline is bounded to two packets and stop cancels waiting work', async () => {
+  const { wheel, api, calls } = fixture();
+  const original = api.sendCommand;
+  const complete = [];
+  api.sendCommand = (target, method, parameters) => {
+    if (parameters.type !== 'mouseWheel') return original(target, method, parameters);
+    calls.push([method, target.tabId, parameters]);
+    return new Promise((resolve) => complete.push(resolve));
+  };
+  await wheel.submit(10, 10, 0, () => true);
+  await wheel.submit(10, 20, 0, () => true);
+  let thirdSubmitted = false;
+  const third = wheel.submit(10, 30, 0, () => true).then(() => { thirdSubmitted = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(complete.length, 2);
+  assert.equal(thirdSubmitted, false);
+  const released = wheel.release();
+  complete[0]();
+  await third;
+  assert.equal(complete.length, 2);
+  complete[1]();
+  await released;
+  assert.deepEqual(calls.at(-1), ['detach', 10]);
+});
+
+test('asynchronous input errors remain observable and do not poison release', async () => {
+  const { wheel, api } = fixture();
+  const original = api.sendCommand;
+  api.sendCommand = (target, method, parameters) => parameters.type === 'mouseWheel'
+    ? Promise.reject(new Error('Input failed')) : original(target, method, parameters);
+  const ticket = await wheel.submit(10, 10, 0, () => true);
+  await assert.rejects(ticket.completion, /Input failed/);
+  await wheel.release();
 });

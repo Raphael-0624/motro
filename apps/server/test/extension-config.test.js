@@ -13,8 +13,8 @@ function background({ local = {}, session = {} } = {}) {
   const connections = [];
   let listener;
   const chrome = {
-    tabs: { onActivated: { addListener() {} } },
-    windows: { onFocusChanged: { addListener() {} } },
+    tabs: { onActivated: { addListener() {} }, onZoomChange: { addListener() {} }, onUpdated: { addListener() {} } },
+    windows: { onFocusChanged: { addListener() {} }, onBoundsChanged: { addListener() {} } },
     storage: {
       local: {
         async get(key) { return { [key]: local[key] }; },

@@ -16,7 +16,7 @@ macOS 如弹出网络访问或防火墙提示，需允许 Node.js 接受局域�
 
 ```sh
 curl http://localhost:3030/api/health
-# {"ok":true,"name":"motro","version":"0.1.4"}
+# {"ok":true,"name":"motro","version":"0.1.5"}
 curl http://localhost:3030/api/version
 ```
 
@@ -83,6 +83,12 @@ MOTRO_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 - 原生滚轮的中心位置、两轴方向、调试会话复用 / 释放、附着期间停止、外部取消和错误处理；共 31 项 Node 测试。
 - 真实扩展驱动手机左右 / 上下手势，测试只接受 `isTrusted` 滚轮的 Canvas、普通横向容器，以及断开后释放调试连接。
 - 飞书实际登录文档未自动测试，需要真机手工验证；不保证只接受拖拽或要求特殊修饰键的应用。
+
+### 0.1.5 回归范围（2026-11-06）
+
+- 连续 60 次滚动只定位 / 移动鼠标一次，暂停或失效后重新定位；两条在途上限、停止时取消等待任务、异步错误处理，共 34 项 Node 测试。
+- 真实扩展中验证连续多次移动的 Canvas 总位移不丢失，保留配对、授权、惯性、缩放、横向和断开释放测试。
+- 性能检查使用隔离 Chrome 和只接受可信滚轮的 Canvas，本机 60 次输入由 180 次调试调用降到 62 次，最终位移完整。实际公网和飞书手感仍待用户验收。
 
 ## 手工验收清单
 
